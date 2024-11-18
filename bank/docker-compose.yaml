@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - pg_network
+    ports:
+      - "5432:5432"
+
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: postgrest
+    environment:
+      PGRST_DB_URI: postgres://myuser:mypassword@postgres:5432/mydatabase
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_POOL: 10
+      PGRST_DB_ANON_ROLE: anon
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    networks:
+      - pg_network
+
+  swagger:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    environment:
+      API_URL: http://localhost:3000/
+    networks:
+      - pg_network
+
+networks:
+  pg_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

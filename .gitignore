@@ -26,4 +26,7 @@ go.work.sum
 
 #Data
 List*.txt
-*mergesortGo
+*Bank*.txt
+*mergesortGo*
+*bankGo*
+*.exe

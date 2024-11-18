@@ -6,8 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"performancetest/mergesort"
 )
 
 func main() {
@@ -38,9 +36,9 @@ func main() {
 func runAlgorithm(algorithm string, list []int, chunkSize int) {
 	switch algorithm {
 	case "single":
-		list = mergesort.MergeSort(list)
+		list = MergeSort(list)
 	case "goroutine":
-		sortChan := mergesort.MergeSortGoroutine(list, chunkSize)
+		sortChan := MergeSortGoroutine(list, chunkSize)
 		list = <-sortChan
 	default:
 		fmt.Println("Unknown algorithm")
