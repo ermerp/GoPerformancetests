@@ -18,7 +18,7 @@ func executeTransactionsSingle(bankService BankAccountRepository, transactions [
 // executeTransactionsGoroutine führt die Transaktionen parallel in Goroutinen aus
 func executeTransactionsGoroutine(bankService BankAccountRepository, transactions []Transaction) {
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 10) // Begrenze die Anzahl der gleichzeitigen Goroutinen auf 10
+	semaphore := make(chan struct{}, 1000) // Begrenze die Anzahl der gleichzeitigen Goroutinen auf 10
 
 	for _, transaction := range transactions {
 		wg.Add(1)

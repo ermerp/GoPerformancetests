@@ -2,12 +2,15 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Account struct {
@@ -22,16 +25,43 @@ type Transaction struct {
 }
 
 func main() {
-	fmt.Println("Go:Bank")
+	// Abrufen der Umgebungsvariable
+	implementation := os.Getenv("BANK_IMPLEMENTATION")
+
+	// Ausgabe der Umgebungsvariable
+	fmt.Printf("Go:Bank - Using implementation: %s\n", implementation)
 
 	numberOfAccounts := 1000
 	numberOfTransactions := 10000
 
-	// Erstelle eine Instanz von Bank, die das BankAccountRepository Interface implementiert
-	var bankService BankAccountRepository = PostgRESTBankAccountRepository{}
+	// PostgreSQL Verbindungsinformationen
+	psqlInfo := "postgres://myuser:mypassword@localhost:5432/mydatabase?sslmode=disable"
+
+	// Erstelle einen pgxpool
+	config, err := pgxpool.ParseConfig(psqlInfo)
+	if err != nil {
+		log.Fatalf("Unable to parse connection string: %v", err)
+	}
+
+	// Setze die maximale Anzahl von Verbindungen
+	config.MaxConns = 80
+
+	pool, err := pgxpool.ConnectConfig(context.Background(), config)
+	if err != nil {
+		log.Fatalf("Unable to create connection pool: %v", err)
+	}
+	defer pool.Close()
+
+	// Wähle die Implementierung basierend auf einer Konfigurationsvariable
+	var bankService BankAccountRepository
+	if implementation == "postgrest" {
+		bankService = PostgRESTBankAccountRepository{}
+	} else {
+		bankService = NewSQLBankAccountRepository(pool)
+	}
 
 	// Lösche alle bestehenden Accounts
-	err := bankService.DeleteAllAccounts()
+	err = bankService.DeleteAllAccounts()
 	if err != nil {
 		log.Fatalf("Error deleting all accounts: %v", err)
 	}
@@ -44,14 +74,13 @@ func main() {
 
 	fmt.Println("File imported.")
 
+	start := time.Now()
 	// Führe die Transaktionen durch
-	start := time.Now() // Startzeitpunkt
-
 	//executeTransactionsSingle(bankService, transactions)
 	executeTransactionsGoroutine(bankService, transactions)
+	duration := time.Since(start)
 
-	duration := time.Since(start) // Dauer berechnen
-	log.Printf("Go:Bank -  Time: %v", duration)
+	log.Printf("Time: %v", duration)
 }
 
 // importAccounts liest die Datei ein und schreibt die Accounts in die Datenbank

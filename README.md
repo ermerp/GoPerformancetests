@@ -25,4 +25,12 @@ Executables:
 ./mergesort/mergesortGo
 ```
 
+## Driver
+
+pgx:
+```
+go get github.com/jackc/pgx/v4
+go get github.com/jackc/pgx/v4/pgxpool
+```
+
 
