@@ -25,6 +25,22 @@ Executables:
 ./mergesort/mergesortGo
 ```
 
+## Run
+
+### Bank
+#### var:
+```
+$env:BANK_IMPLEMENTATION = "sql"
+
+or
+
+$env:BANK_IMPLEMENTATION = "postgrest"
+```
+#### run:
+```
+go run .
+```
+
 ## Driver
 
 pgx:
