@@ -16,22 +16,39 @@ func executeTransactionsSingle(bankService BankAccountRepository, transactions [
 }
 
 // executeTransactionsGoroutine führt die Transaktionen parallel in Goroutinen aus
-func executeTransactionsGoroutine(bankService BankAccountRepository, transactions []Transaction) {
+func executeTransactionsGoroutine(bankService BankAccountRepository, transactions []Transaction, maxConnections int) {
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 1000) // Begrenze die Anzahl der gleichzeitigen Goroutinen auf 10
 
-	for _, transaction := range transactions {
-		wg.Add(1)
-		semaphore <- struct{}{} // Blockiert, wenn das Limit erreicht ist
-		go func(tx Transaction) {
-			defer wg.Done()
-			defer func() { <-semaphore }() // Gibt den Platz im Semaphore frei
+	// Check if bankService is of type SQLBankAccountRepository
+	if sqlBankService, ok := bankService.(*SQLBankAccountRepository); ok {
+		for _, transaction := range transactions {
+			wg.Add(1)
+			go func(tx Transaction) {
+				defer wg.Done()
 
-			err := bankService.TransferBalance(tx)
-			if err != nil {
-				log.Printf("Error transferring balance: %v", err)
-			}
-		}(transaction)
+				err := sqlBankService.TransferBalance(tx)
+				if err != nil {
+					log.Printf("Error transferring balance: %v", err)
+				}
+			}(transaction)
+		}
+	} else if restBankService, ok := bankService.(*PostgRESTBankAccountRepository); ok {
+		semaphore := make(chan struct{}, maxConnections) // Begrenze die Anzahl der gleichzeitigen Goroutinen
+
+		for _, transaction := range transactions {
+			wg.Add(1)
+			semaphore <- struct{}{} // Blockiert, wenn das Limit erreicht ist
+			go func(tx Transaction) {
+				defer wg.Done()
+				defer func() { <-semaphore }() // Gibt den Platz im Semaphore frei
+
+				err := restBankService.TransferBalance(tx)
+				if err != nil {
+					log.Printf("Error transferring balance: %v", err)
+				}
+			}(transaction)
+		}
 	}
+
 	wg.Wait() // Warte, bis alle Goroutinen abgeschlossen sind
 }

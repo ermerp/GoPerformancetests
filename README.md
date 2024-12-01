@@ -25,23 +25,26 @@ Executables:
 ./mergesort/mergesortGo
 ```
 
-## Run
+# Docker
 
-### Bank
-#### var:
-```
-$env:BANK_IMPLEMENTATION = "sql"
+## Bank: benchmark
 
-or
-
-$env:BANK_IMPLEMENTATION = "postgrest"
+### build Container
 ```
-#### run:
-```
-go run .
+docker build -t bank-go .
 ```
 
-## Driver
+### start Container
+```
+docker-compose up
+```
+
+### reset Container
+```
+docker-compose down -v
+```
+
+# Driver
 
 pgx:
 ```

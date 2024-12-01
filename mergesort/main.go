@@ -15,16 +15,25 @@ func main() {
 	//60000000
 	chunkNumber := flag.Int("chunkNumber", 16, "Number of chunks")
 	runs := flag.Int("runs", 1, "Number of runs")
+	warmUpRuns := flag.Int("warmUpRuns", 1, "Number of warm-up runs")
 	flag.Parse()
 
 	chunkSize := *listLength / *chunkNumber
 
-	fmt.Printf("Go - Algorithm: %s, List length: %d, Chunk number: %d, Runs: %d\n",
-		*algorithm, *listLength, *chunkNumber, *runs)
+	fmt.Printf("Go - Algorithm: %s, List length: %d, Chunk number: %d, Runs: %d, War Up Runs: %d\n",
+		*algorithm, *listLength, *chunkNumber, *runs, *warmUpRuns)
 
 	// Datei lesen
 	list := importData(fmt.Sprintf("List%d.txt", *listLength))
 	//fmt.Println("Unsortierte Zahlen:", list)
+
+	for i := 0; i < *warmUpRuns; i++ {
+		copyList := make([]int, len(list))
+		copy(copyList, list)
+		runAlgorithm(*algorithm, copyList, chunkSize)
+	}
+
+	fmt.Println("File imported.")
 
 	for i := 0; i < *runs; i++ {
 		copyList := make([]int, len(list))
@@ -37,7 +46,7 @@ func runAlgorithm(algorithm string, list []int, chunkSize int) {
 	switch algorithm {
 	case "single":
 		list = MergeSort(list)
-	case "goroutine":
+	case "goroutines":
 		sortChan := MergeSortGoroutine(list, chunkSize)
 		list = <-sortChan
 	default:
@@ -70,6 +79,5 @@ func importData(fileName string) []int {
 		}
 		numbers = append(numbers, num)
 	}
-	fmt.Println("File imported.")
 	return numbers
 }

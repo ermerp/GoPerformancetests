@@ -6,15 +6,27 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 )
 
 // PostgRESTBankAccountRepository implementiert das BankAccountRepository Interface
-type PostgRESTBankAccountRepository struct{}
+type PostgRESTBankAccountRepository struct {
+	url string
+}
+
+// NewPostgRESTBankAccountRepository is the constructor function
+func NewPostgRESTBankAccountRepository() *PostgRESTBankAccountRepository {
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	newUrl := fmt.Sprintf("http://%s:3000/rpc/", dbHost)
+	return &PostgRESTBankAccountRepository{url: newUrl}
+}
 
 // CreateAccount sendet eine HTTP-POST-Anfrage an die PostgREST-API, um einen neuen Account zu erstellen
-func (b PostgRESTBankAccountRepository) CreateAccount(account Account) error {
-	url := "http://localhost:3000/rpc/create_account"
+func (r *PostgRESTBankAccountRepository) CreateAccount(account Account) error {
 
 	// JSON-Daten erstellen
 	jsonData, err := json.Marshal(map[string]interface{}{
@@ -26,7 +38,7 @@ func (b PostgRESTBankAccountRepository) CreateAccount(account Account) error {
 	}
 
 	// HTTP-POST-Anfrage senden
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(fmt.Sprintf("%screate_account", r.url), "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error sending POST request: %v", err)
 	}
@@ -42,8 +54,7 @@ func (b PostgRESTBankAccountRepository) CreateAccount(account Account) error {
 }
 
 // DeleteAllAccounts sendet eine HTTP-POST-Anfrage an die PostgREST-API, um alle Accounts zu löschen
-func (b PostgRESTBankAccountRepository) DeleteAllAccounts() error {
-	url := "http://localhost:3000/rpc/delete_all_accounts"
+func (r *PostgRESTBankAccountRepository) DeleteAllAccounts() error {
 
 	// Leere JSON-Daten erstellen
 	jsonData, err := json.Marshal(map[string]interface{}{})
@@ -54,7 +65,7 @@ func (b PostgRESTBankAccountRepository) DeleteAllAccounts() error {
 	attempt := 1
 	for attempt < MAX_RETRIES {
 		// HTTP-POST-Anfrage senden
-		resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+		resp, err := http.Post(fmt.Sprintf("%sdelete_all_accounts", r.url), "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			return fmt.Errorf("error sending POST request: %v", err)
 		}
@@ -90,8 +101,7 @@ func (b PostgRESTBankAccountRepository) DeleteAllAccounts() error {
 }
 
 // TransferBalance sendet eine HTTP-POST-Anfrage an die PostgREST-API, um eine Transaktion durchzuführen
-func (b PostgRESTBankAccountRepository) TransferBalance(transaction Transaction) error {
-	url := "http://localhost:3000/rpc/transfer_balance"
+func (r *PostgRESTBankAccountRepository) TransferBalance(transaction Transaction) error {
 
 	// JSON-Daten erstellen
 	jsonData, err := json.Marshal(map[string]interface{}{
@@ -106,7 +116,7 @@ func (b PostgRESTBankAccountRepository) TransferBalance(transaction Transaction)
 	attempt := 1
 	for attempt < MAX_RETRIES {
 		// HTTP-POST-Anfrage senden
-		resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+		resp, err := http.Post(fmt.Sprintf("%stransfer_balance", r.url), "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			return fmt.Errorf("error sending POST request: %v", err)
 		}

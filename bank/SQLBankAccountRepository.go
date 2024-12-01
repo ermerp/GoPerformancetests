@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -15,8 +17,8 @@ type SQLBankAccountRepository struct {
 }
 
 // NewSQLBankAccountRepository erstellt ein neues SQLBankAccountRepository
-func NewSQLBankAccountRepository(pool *pgxpool.Pool) *SQLBankAccountRepository {
-	return &SQLBankAccountRepository{pool: pool}
+func NewSQLBankAccountRepository(maxConns int32) *SQLBankAccountRepository {
+	return &SQLBankAccountRepository{pool: initializePool(maxConns)}
 }
 
 // CreateAccount fügt einen neuen Account in die Datenbank ein
@@ -127,4 +129,29 @@ func handleTransactionError(ctx context.Context, tx pgx.Tx, err error, attempt i
 		return true, nil
 	}
 	return false, nil
+}
+
+func initializePool(maxConns int32) *pgxpool.Pool {
+	// PostgreSQL Verbindungsinformationen
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	psqlInfo := fmt.Sprintf("postgres://myuser:mypassword@%s:5432/mydatabase?sslmode=disable", dbHost)
+
+	// Erstelle einen pgxpool
+	config, err := pgxpool.ParseConfig(psqlInfo)
+	if err != nil {
+		log.Fatalf("Unable to parse connection string: %v", err)
+	}
+
+	// Setze die maximale Anzahl von Verbindungen
+	config.MaxConns = maxConns
+
+	pool, err := pgxpool.ConnectConfig(context.Background(), config)
+	if err != nil {
+		log.Fatalf("Unable to create connection pool: %v", err)
+	}
+
+	return pool
 }

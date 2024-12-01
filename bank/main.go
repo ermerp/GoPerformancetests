@@ -2,15 +2,12 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Account struct {
@@ -25,62 +22,75 @@ type Transaction struct {
 }
 
 func main() {
-	// Abrufen der Umgebungsvariable
-	implementation := os.Getenv("BANK_IMPLEMENTATION")
-
-	// Ausgabe der Umgebungsvariable
-	fmt.Printf("Go:Bank - Using implementation: %s\n", implementation)
-
-	numberOfAccounts := 1000
-	numberOfTransactions := 10000
-
-	// PostgreSQL Verbindungsinformationen
-	psqlInfo := "postgres://myuser:mypassword@localhost:5432/mydatabase?sslmode=disable"
-
-	// Erstelle einen pgxpool
-	config, err := pgxpool.ParseConfig(psqlInfo)
-	if err != nil {
-		log.Fatalf("Unable to parse connection string: %v", err)
+	// Retrieve the environment variables
+	interfaceType := os.Getenv("INTERFACE_TYPE")
+	if interfaceType == "" {
+		interfaceType = "PGX"
+	}
+	algorithm := os.Getenv("ALGORITHM")
+	if algorithm == "" {
+		algorithm = "GOROUTINE"
+	}
+	numberOfAccounts := os.Getenv("NUMBER_Of_ACCOUNTS")
+	if numberOfAccounts == "" {
+		numberOfAccounts = "10"
+	}
+	numberOfTransactions := os.Getenv("NUMBER_OF_TRANSACTIONS")
+	if numberOfTransactions == "" {
+		numberOfTransactions = "100"
 	}
 
-	// Setze die maximale Anzahl von Verbindungen
-	config.MaxConns = 80
-
-	pool, err := pgxpool.ConnectConfig(context.Background(), config)
-	if err != nil {
-		log.Fatalf("Unable to create connection pool: %v", err)
+	maxConn := os.Getenv("MAX_CONNECTIONS")
+	if maxConn == "" {
+		maxConn = "10"
 	}
-	defer pool.Close()
+	maxConnections, err := strconv.Atoi(maxConn)
+	if err != nil {
+		log.Fatalf("Invalid max connections: %d", maxConnections)
+	}
 
-	// Wähle die Implementierung basierend auf einer Konfigurationsvariable
+	fmt.Printf("Go:Bank - Interface: %s, Algorithm: %s, Max Connections: %s, Number of Accounts: %s, Number of Transactions: %s\n",
+		interfaceType, algorithm, maxConn, numberOfAccounts, numberOfTransactions)
+
 	var bankService BankAccountRepository
-	if implementation == "postgrest" {
-		bankService = PostgRESTBankAccountRepository{}
-	} else {
-		bankService = NewSQLBankAccountRepository(pool)
+	switch interfaceType {
+	case "PGX":
+		bankService = NewSQLBankAccountRepository(int32(maxConnections))
+		defer bankService.(*SQLBankAccountRepository).pool.Close()
+	case "REST":
+		bankService = NewPostgRESTBankAccountRepository()
+	default:
+		log.Fatalf("Unknown interface type: %s", interfaceType)
 	}
 
-	// Lösche alle bestehenden Accounts
+	// Clean up the database
 	err = bankService.DeleteAllAccounts()
 	if err != nil {
 		log.Fatalf("Error deleting all accounts: %v", err)
 	}
 
 	// Importiere Accounts aus einer Datei
-	importAccounts(bankService, fmt.Sprintf("BankAccounts%d.txt", numberOfAccounts))
+	importAccounts(bankService, fmt.Sprintf("bankData/BankAccounts%s.txt", numberOfAccounts))
 
 	// Importiere Transaktionen aus einer Datei
-	transactions := importTransactions(fmt.Sprintf("BankTransactions%d-%d.txt", numberOfTransactions, numberOfAccounts))
+	transactions := importTransactions(fmt.Sprintf("bankData/BankTransactions%s-%s.txt", numberOfTransactions, numberOfAccounts))
 
 	fmt.Println("File imported.")
 
 	start := time.Now()
 	// Führe die Transaktionen durch
-	//executeTransactionsSingle(bankService, transactions)
-	executeTransactionsGoroutine(bankService, transactions)
+	switch algorithm {
+	case "SINGLE":
+		executeTransactionsSingle(bankService, transactions)
+	case "GOROUTINE":
+
+		executeTransactionsGoroutine(bankService, transactions, maxConnections)
+	default:
+		log.Fatalf("Unknown algorithm: %s", algorithm)
+	}
 	duration := time.Since(start)
 
-	log.Printf("Time: %v", duration)
+	log.Printf("Go:Bank - Time: %v", duration)
 }
 
 // importAccounts liest die Datei ein und schreibt die Accounts in die Datenbank
