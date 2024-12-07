@@ -6,49 +6,55 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
 
-	algorithm := flag.String("algorithm", "goroutine", "Sorting algorithm to use")
-	listLength := flag.Int("listLength", 10, "Length of the list")
+	algorithm := flag.String("algorithm", "goroutines", "Sorting algorithm to use")
+	listLength := flag.Int("listLength", 10000000, "Length of the list")
 	//60000000
-	chunkNumber := flag.Int("chunkNumber", 16, "Number of chunks")
+	maxDepth := flag.Int("maxDepth", 4, "Max tree depth")
 	runs := flag.Int("runs", 1, "Number of runs")
-	warmUpRuns := flag.Int("warmUpRuns", 1, "Number of warm-up runs")
+	warmUpRuns := flag.Int("warmUpRuns", 0, "Number of warm-up runs")
 	flag.Parse()
 
-	chunkSize := *listLength / *chunkNumber
-
-	fmt.Printf("Go - Algorithm: %s, List length: %d, Chunk number: %d, Runs: %d, War Up Runs: %d\n",
-		*algorithm, *listLength, *chunkNumber, *runs, *warmUpRuns)
+	fmt.Printf("Go - Algorithm: %s, List length: %d, Max Depth: %d, Runs: %d, War Up Runs: %d\n",
+		*algorithm, *listLength, *maxDepth, *runs, *warmUpRuns)
 
 	// Datei lesen
 	list := importData(fmt.Sprintf("List%d.txt", *listLength))
 	//fmt.Println("Unsortierte Zahlen:", list)
 
+	fmt.Println("File imported.")
+
 	for i := 0; i < *warmUpRuns; i++ {
 		copyList := make([]int, len(list))
 		copy(copyList, list)
-		runAlgorithm(*algorithm, copyList, chunkSize)
+		runAlgorithm(*algorithm, copyList, *maxDepth)
 	}
 
-	fmt.Println("File imported.")
+	fmt.Println("warum up runs finished")
+
+	start := time.Now()
 
 	for i := 0; i < *runs; i++ {
 		copyList := make([]int, len(list))
 		copy(copyList, list)
-		runAlgorithm(*algorithm, copyList, chunkSize)
+		runAlgorithm(*algorithm, copyList, *maxDepth)
 	}
+
+	elapsed := time.Since(start)
+	fmt.Printf("Go %s, Time: %s\n", *algorithm, elapsed)
+
 }
 
-func runAlgorithm(algorithm string, list []int, chunkSize int) {
+func runAlgorithm(algorithm string, list []int, maxDepth int) {
 	switch algorithm {
 	case "single":
-		list = MergeSort(list)
+		RunMergeSortSingle(list)
 	case "goroutines":
-		sortChan := MergeSortGoroutine(list, chunkSize)
-		list = <-sortChan
+		RunMergeSortGoroutines(list, maxDepth)
 	default:
 		fmt.Println("Unknown algorithm")
 	}
