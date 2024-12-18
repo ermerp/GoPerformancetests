@@ -51,7 +51,7 @@ func (r *SQLBankAccountRepository) DeleteAllAccounts() error {
 }
 
 // TransferBalance führt eine Transaktion durch, um Guthaben von einem Account auf einen anderen zu übertragen
-func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction) error {
+func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction, delay_transaction float64) error {
 	ctx := context.Background()
 	attempt := 1
 	for attempt < MAX_RETRIES {
@@ -88,6 +88,15 @@ func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction) erro
 			if retry {
 				attempt++
 				continue
+			}
+		}
+
+		// Führe pg_sleep in der Transaktion aus, um eine Verzögerung in der Datenbank zu erzeugen
+		if delay_transaction > 0 {
+			_, err = tx.Exec(ctx, fmt.Sprintf("SELECT pg_sleep(%f);", delay_transaction))
+			if err != nil {
+				tx.Rollback(ctx)
+				return fmt.Errorf("error during pg_sleep: %v", err)
 			}
 		}
 

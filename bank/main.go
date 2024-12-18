@@ -31,7 +31,7 @@ func main() {
 	if algorithm == "" {
 		algorithm = "GOROUTINE"
 	}
-	numberOfAccounts := os.Getenv("NUMBER_Of_ACCOUNTS")
+	numberOfAccounts := os.Getenv("NUMBER_OF_ACCOUNTS")
 	if numberOfAccounts == "" {
 		numberOfAccounts = "10"
 	}
@@ -49,8 +49,17 @@ func main() {
 		log.Fatalf("Invalid max connections: %d", maxConnections)
 	}
 
-	fmt.Printf("Go:Bank - Interface: %s, Algorithm: %s, Max Connections: %s, Number of Accounts: %s, Number of Transactions: %s\n",
-		interfaceType, algorithm, maxConn, numberOfAccounts, numberOfTransactions)
+	delayTransactionStr := os.Getenv("DELAY_TRANSACTION")
+	if delayTransactionStr == "" {
+		delayTransactionStr = "0"
+	}
+	delayTransaction, err := strconv.ParseFloat(delayTransactionStr, 64)
+	if err != nil {
+		log.Fatalf("Error parsing DELAY_TRANSACTION: %v", err)
+	}
+
+	fmt.Printf("Go:Bank - Interface: %s, Algorithm: %s, Max Connections: %s, Number of Accounts: %s, Number of Transactions: %s, Delay Transaction: %f\n",
+		interfaceType, algorithm, maxConn, numberOfAccounts, numberOfTransactions, delayTransaction)
 
 	var bankService BankAccountRepository
 	switch interfaceType {
@@ -84,7 +93,7 @@ func main() {
 		executeTransactionsSingle(bankService, transactions)
 	case "GOROUTINE":
 
-		executeTransactionsGoroutine(bankService, transactions, maxConnections)
+		executeTransactionsGoroutine(bankService, transactions, maxConnections, delayTransaction)
 	default:
 		log.Fatalf("Unknown algorithm: %s", algorithm)
 	}

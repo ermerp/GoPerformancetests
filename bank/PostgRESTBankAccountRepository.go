@@ -101,7 +101,7 @@ func (r *PostgRESTBankAccountRepository) DeleteAllAccounts() error {
 }
 
 // TransferBalance sendet eine HTTP-POST-Anfrage an die PostgREST-API, um eine Transaktion durchzuführen
-func (r *PostgRESTBankAccountRepository) TransferBalance(transaction Transaction) error {
+func (r *PostgRESTBankAccountRepository) TransferBalance(transaction Transaction, delay_transaction float64) error {
 
 	// JSON-Daten erstellen
 	jsonData, err := json.Marshal(map[string]interface{}{

@@ -43,8 +43,9 @@ services:
       INTERFACE_TYPE: PGX #REST, PGX
       ALGORITHM: GOROUTINE #GOROUTINE, SINGLE
       MAX_CONNECTIONS: 80
-      NUMBER_Of_ACCOUNTS: 10000
+      NUMBER_OF_ACCOUNTS: 10000
       NUMBER_OF_TRANSACTIONS: 100000
+      DELAY_TRANSACTION: 0	
     depends_on:
       postgres:
         condition: service_healthy
