@@ -78,16 +78,17 @@ func main() {
 		log.Fatalf("Error deleting all accounts: %v", err)
 	}
 
-	// Importiere Accounts aus einer Datei
+	// Import bank accounts and save them to the database
 	importAccounts(bankService, fmt.Sprintf("bankData/BankAccounts%s.txt", numberOfAccounts))
 
-	// Importiere Transaktionen aus einer Datei
+	// Import transactions
 	transactions := importTransactions(fmt.Sprintf("bankData/BankTransactions%s-%s.txt", numberOfTransactions, numberOfAccounts))
 
 	fmt.Println("File imported.")
 
+	// Execute transactions
 	start := time.Now()
-	// Führe die Transaktionen durch
+
 	switch algorithm {
 	case "SINGLE":
 		executeTransactionsSingle(bankService, transactions)
@@ -102,7 +103,7 @@ func main() {
 	log.Printf("Go:Bank - Time: %v", duration)
 }
 
-// importAccounts liest die Datei ein und schreibt die Accounts in die Datenbank
+// Import bank accounts and save them to the database
 func importAccounts(bankService BankAccountRepository, fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -115,13 +116,13 @@ func importAccounts(bankService BankAccountRepository, fileName string) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Teile die Zeile in ID und Balance auf
+		// seperate the line into ID and Balance
 		parts := strings.SplitN(line, ", ", 2)
 		if len(parts) != 2 {
 			log.Fatalf("Invalid line format: %s", line)
 		}
 
-		// Ersetze das Komma durch einen Punkt im Balance-Teil
+		// replace the comma with a dot in the balance part
 		balanceStr := strings.Replace(parts[1], ",", ".", 1)
 		balance, err := strconv.ParseFloat(balanceStr, 64)
 		if err != nil {
@@ -139,6 +140,7 @@ func importAccounts(bankService BankAccountRepository, fileName string) {
 		log.Fatal(err)
 	}
 
+	// Create the accounts in the database
 	for _, acc := range accounts {
 		err := bankService.CreateAccount(acc)
 		if err != nil {
@@ -147,7 +149,7 @@ func importAccounts(bankService BankAccountRepository, fileName string) {
 	}
 }
 
-// importTransactions liest die Datei ein und speichert jede Zeile als Transaction in einer Liste
+// import transactions
 func importTransactions(fileName string) []Transaction {
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -160,13 +162,13 @@ func importTransactions(fileName string) []Transaction {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Teile die Zeile in From, To und Balance auf
+		// separate the line into From, To and Balance
 		parts := strings.SplitN(line, ", ", 3)
 		if len(parts) != 3 {
 			log.Fatalf("Invalid line format: %s", line)
 		}
 
-		// Ersetze das Komma durch einen Punkt im Balance-Teil
+		// replace the comma with a dot in the balance part
 		balanceStr := strings.Replace(parts[2], ",", ".", 1)
 		balance, err := strconv.ParseFloat(balanceStr, 64)
 		if err != nil {

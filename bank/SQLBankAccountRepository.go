@@ -7,21 +7,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// SQLBankAccountRepository implementiert das BankAccountRepository Interface
+// implements the BankAccountRepository interface
 type SQLBankAccountRepository struct {
 	pool *pgxpool.Pool
 }
 
-// NewSQLBankAccountRepository erstellt ein neues SQLBankAccountRepository
+// creates a new SQLBankAccountRepository
 func NewSQLBankAccountRepository(maxConns int32) *SQLBankAccountRepository {
 	return &SQLBankAccountRepository{pool: initializePool(maxConns)}
 }
 
-// CreateAccount fügt einen neuen Account in die Datenbank ein
+// creates a new account in the database
 func (r *SQLBankAccountRepository) CreateAccount(account Account) error {
 	ctx := context.Background()
 	query := "INSERT INTO account (id, balance) VALUES ($1, $2)"
@@ -32,7 +32,7 @@ func (r *SQLBankAccountRepository) CreateAccount(account Account) error {
 	return nil
 }
 
-// DeleteAllAccounts löscht alle Accounts aus der Datenbank
+// deletes all accounts from the database
 func (r *SQLBankAccountRepository) DeleteAllAccounts() error {
 	ctx := context.Background()
 	query := "DELETE FROM account"
@@ -50,7 +50,7 @@ func (r *SQLBankAccountRepository) DeleteAllAccounts() error {
 	return fmt.Errorf("delete failed after %d attempts", MAX_RETRIES)
 }
 
-// TransferBalance führt eine Transaktion durch, um Guthaben von einem Account auf einen anderen zu übertragen
+// transfers the balance from one account to another
 func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction, delay_transaction float64) error {
 	ctx := context.Background()
 	attempt := 1
@@ -60,7 +60,7 @@ func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction, dela
 			return fmt.Errorf("error beginning transaction: %v", err)
 		}
 
-		// Sperre die Zeilen in der richtigen Reihenfolge
+		// Lock rows in the correct order
 		if transaction.From < transaction.To {
 			_, err = tx.Exec(ctx, "SELECT 1 FROM account WHERE id = $1 FOR UPDATE", transaction.From)
 			retry, _ := handleTransactionError(ctx, tx, err, attempt)
@@ -91,7 +91,7 @@ func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction, dela
 			}
 		}
 
-		// Führe pg_sleep in der Transaktion aus, um eine Verzögerung in der Datenbank zu erzeugen
+		// Perform the delay if specified
 		if delay_transaction > 0 {
 			_, err = tx.Exec(ctx, fmt.Sprintf("SELECT pg_sleep(%f);", delay_transaction))
 			if err != nil {
@@ -100,7 +100,7 @@ func (r *SQLBankAccountRepository) TransferBalance(transaction Transaction, dela
 			}
 		}
 
-		// Führe die Updates durch
+		// Perform the balance update
 		_, err = tx.Exec(ctx, "UPDATE account SET balance = balance - $1 WHERE id = $2", transaction.Balance, transaction.From)
 		retry, _ := handleTransactionError(ctx, tx, err, attempt)
 		if retry {
@@ -140,24 +140,23 @@ func handleTransactionError(ctx context.Context, tx pgx.Tx, err error, attempt i
 	return false, nil
 }
 
+// initializes the connection pool
 func initializePool(maxConns int32) *pgxpool.Pool {
-	// PostgreSQL Verbindungsinformationen
 	dbHost := os.Getenv("DB_HOST")
 	if dbHost == "" {
 		dbHost = "localhost"
 	}
 	psqlInfo := fmt.Sprintf("postgres://myuser:mypassword@%s:5432/mydatabase?sslmode=disable", dbHost)
 
-	// Erstelle einen pgxpool
 	config, err := pgxpool.ParseConfig(psqlInfo)
 	if err != nil {
 		log.Fatalf("Unable to parse connection string: %v", err)
 	}
 
-	// Setze die maximale Anzahl von Verbindungen
+	// Set the maximum pool size
 	config.MaxConns = maxConns
 
-	pool, err := pgxpool.ConnectConfig(context.Background(), config)
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v", err)
 	}

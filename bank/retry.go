@@ -12,7 +12,7 @@ const (
 
 var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-// calculateRetryDelay berechnet die Verzögerung basierend auf der Anzahl der Versuche
+// calculates the delay for the retry
 func calculateRetryDelay(attempt int) time.Duration {
 	return time.Duration(attempt*RETRY_DELAY_MS)*time.Millisecond + time.Duration(rng.Intn(501))*time.Millisecond
 }
